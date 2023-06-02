@@ -18,6 +18,7 @@ package utils
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/version"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
@@ -32,12 +33,22 @@ const (
 func SupportEviction(client clientset.Interface) (groupVersion string, err error) {
 	var (
 		serverGroups          *metav1.APIGroupList
+		serverVersion         *version.Info
 		resourceList          *metav1.APIResourceList
 		foundPolicyGroup      bool
 		preferredGroupVersion string
 	)
 
 	discoveryClient := client.Discovery()
+	serverVersion, err = discoveryClient.ServerVersion()
+	if serverVersion == nil || err != nil {
+		return
+	}
+	if serverVersion.Major == "1" && serverVersion.Minor == "21" {
+		groupVersion = EvictionGroupName + "/v1beta1"
+		return
+	}
+
 	serverGroups, err = discoveryClient.ServerGroups()
 	if serverGroups == nil || err != nil {
 		return
